@@ -115,6 +115,7 @@
                                  stream)]
       (fast-list-iter [t (tasks-fn stream values)]
         (transfer-fn t
+                     (:task-id task-data)
                      out-tuple
                      overflow-buffer)
         )))

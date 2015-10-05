@@ -197,22 +197,22 @@
 ;; in its own function so that it can be mocked out by tracked topologies
 (defn mk-executor-transfer-fn [batch-transfer->worker storm-conf]
   (fn this
-    ([task tuple block? ^ConcurrentLinkedQueue overflow-buffer]
+    ([task task-src tuple block? ^ConcurrentLinkedQueue overflow-buffer]
       (when (= true (storm-conf TOPOLOGY-DEBUG))
         (log-message "TRANSFERING tuple TASK: " task " TUPLE: " tuple))
       (if (and overflow-buffer (not (.isEmpty overflow-buffer)))
-        (.add overflow-buffer [task tuple])
+        (.add overflow-buffer [task task-src tuple])
         (try-cause
-          (disruptor/publish batch-transfer->worker [task tuple] block?)
+          (disruptor/publish batch-transfer->worker [task task-src tuple] block?)
         (catch InsufficientCapacityException e
           (if overflow-buffer
-            (.add overflow-buffer [task tuple])
+            (.add overflow-buffer [task task-src tuple])
             (throw e))
           ))))
-    ([task tuple overflow-buffer]
-      (this task tuple (nil? overflow-buffer) overflow-buffer))
-    ([task tuple]
-      (this task tuple nil)
+    ([task task-src tuple overflow-buffer]
+      (this task task-src tuple (nil? overflow-buffer) overflow-buffer))
+    ([task task-src tuple]
+      (this task task-src tuple nil)
       )))
 
 (defn mk-executor-data [worker executor-id]
@@ -460,7 +460,7 @@
         ]
     (disruptor/clojure-handler
       (fn [tuple-batch sequence-id end-of-batch?]
-        (fast-list-iter [[task-id msg] tuple-batch]
+        (fast-list-iter [[task-id task-src msg] tuple-batch]
           (let [^TupleImpl tuple (if (instance? Tuple msg) msg (.deserialize deserializer msg))]
             (when debug? (log-message "Processing received message FOR " task-id " TUPLE: " tuple))
             (if task-id
@@ -581,6 +581,7 @@
                                                                                      out-stream-id
                                                                                      tuple-id)]
                                                            (transfer-fn out-task
+                                                                        task-id
                                                                         out-tuple
                                                                         overflow-buffer)
                                                            ))
@@ -639,8 +640,8 @@
           ;; try to clear the overflow-buffer
           (try-cause
             (while (not (.isEmpty overflow-buffer))
-              (let [[out-task out-tuple] (.peek overflow-buffer)]
-                (transfer-fn out-task out-tuple false nil)
+              (let [[out-task task-src out-tuple] (.peek overflow-buffer)]
+                (transfer-fn out-task task-src out-tuple false nil)
                 (.poll overflow-buffer)))
           (catch InsufficientCapacityException e
             ))
@@ -799,6 +800,7 @@
                                                                                             (put-xor! anchors-to-ids root-id edge-id))
                                                                             ))))
                                                         (transfer-fn t
+                                                                    task-id
                                                                    (TupleImpl. worker-context
                                                                                values
                                                                                task-id
@@ -889,8 +891,8 @@
             ;; try to clear the overflow-buffer
             (try-cause
               (while (and overflow-buffer (not (.isEmpty overflow-buffer)))
-                (let [[out-task out-tuple] (.peek overflow-buffer)]
-                  (transfer-fn out-task out-tuple false nil)
+                (let [[out-task task-src out-tuple] (.peek overflow-buffer)]
+                  (transfer-fn out-task task-src out-tuple false nil)
                   (.poll overflow-buffer)))
               (catch InsufficientCapacityException e
                 (when (= true (storm-conf TOPOLOGY-DEBUG))
