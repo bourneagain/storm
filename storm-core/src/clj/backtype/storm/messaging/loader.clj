@@ -36,12 +36,13 @@
                (while (and (not @closed) (.hasNext iter)) 
                   (let [packet (.next iter)
                         task (if packet (.task ^TaskMessage packet))
+                        task-src (if packet (.taskSrc ^TaskMessage packet))
                         message (if packet (.message ^TaskMessage packet))]
                       (if (= task -1)
                          (do (log-message "Receiving-thread:[" storm-id ", " port "] received shutdown notice")
                            (.close socket)
                            (reset! closed  true))
-                         (when packet (.add batched [task message]))))))
+                         (when packet (.add batched [task task-src message]))))))
              
              (when (not @closed)
                (do
