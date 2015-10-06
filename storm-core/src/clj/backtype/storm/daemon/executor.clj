@@ -462,12 +462,12 @@
       (fn [tuple-batch sequence-id end-of-batch?]
         (fast-list-iter [[task-id task-src msg] tuple-batch]
           (let [^TupleImpl tuple (if (instance? Tuple msg) msg (.deserialize deserializer msg))]
-            (when debug? (log-message "Processing received message FOR " task-id " TUPLE: " tuple))
+            (when debug? (log-message "Processing received message FOR " task-id " TUPLE: " tuple ":task-src:" task-src))
             (if task-id
-              (tuple-action-fn task-id tuple)
+              (tuple-action-fn task-id task-src tuple)
               ;; null task ids are broadcast tuples
-              (fast-list-iter [task-id task-ids]
-                (tuple-action-fn task-id tuple)
+              (fast-list-iter [task-id task-src task-ids]
+                (tuple-action-fn task-id task-src tuple)
                 ))
             ))))))
 
@@ -521,7 +521,7 @@
                      (let [time-delta (if start-time-ms (time-delta-ms start-time-ms))]
                        (fail-spout-msg executor-data (get task-datas task-id) spout-id tuple-info time-delta "TIMEOUT" id)
                        ))))
-        tuple-action-fn (fn [task-id ^TupleImpl tuple]
+        tuple-action-fn (fn [task-id task-src ^TupleImpl tuple]
                           (let [stream-id (.getSourceStreamId tuple)]
                             (condp = stream-id
                               Constants/SYSTEM_TICK_STREAM_ID (.rotate pending)

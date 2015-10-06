@@ -38,6 +38,7 @@ public class TaskMessage {
     public int task() {
         return _task;
     }
+
     public int taskSrc() {
         return _taskSrc;
     }
