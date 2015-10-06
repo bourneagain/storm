@@ -25,6 +25,9 @@ import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.handler.codec.frame.FrameDecoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 public class MessageDecoder extends FrameDecoder {    
     /*
@@ -35,9 +38,11 @@ public class MessageDecoder extends FrameDecoder {
      *  len ... int(4)
      *  payload ... byte[]     *  
      */
+    private static final Logger LOG = LoggerFactory.getLogger(Server.class);
     protected Object decode(ChannelHandlerContext ctx, Channel channel, ChannelBuffer buf) throws Exception {
         // Make sure that we have received at least a short 
         long available = buf.readableBytes();
+        LOG.debug("SHYAM inside MessageDecode : available:" + available);
         if (available < 2) {
             //need more data
             return null;
@@ -68,32 +73,32 @@ public class MessageDecoder extends FrameDecoder {
                     return ctrl_msg;
                 }
             }
-            
+
             //case 2: SaslTokenMessageRequest
             if(code==-500) {
-            	// Make sure that we have received at least an integer (length) 
+            	// Make sure that we have received at least an integer (length)
                 if (buf.readableBytes() < 4) {
                     //need more data
                     buf.resetReaderIndex();
                     return null;
                 }
-                
+
                 // Read the length field.
                 int length = buf.readInt();
                 if (length<=0) {
                     return new SaslMessageToken(null);
                 }
-                
+
                 // Make sure if there's enough bytes in the buffer.
                 if (buf.readableBytes() < length) {
                     // The whole bytes were not received yet - return null.
                     buf.resetReaderIndex();
                     return null;
                 }
-                
-                // There's enough bytes in the buffer. Read it.  
+
+                // There's enough bytes in the buffer. Read it.
                 ChannelBuffer payload = buf.readBytes(length);
-                
+
                 // Successfully decoded a frame.
                 // Return a SaslTokenMessageRequest object
                 return new SaslMessageToken(payload.array());
@@ -101,6 +106,10 @@ public class MessageDecoder extends FrameDecoder {
 
             // case 3: task Message
             short task = code;
+            LOG.debug("SHYAM inside MessageDecode : task:" + task);
+            short task_src = buf.readShort();
+            LOG.debug("SHYAM inside MessageDecode : task_src:" + task_src);
+            available-=2;
 
             // Make sure that we have received at least an integer (length)
             if (available < 4) {
@@ -111,11 +120,12 @@ public class MessageDecoder extends FrameDecoder {
 
             // Read the length field.
             int length = buf.readInt();
-
+            LOG.debug("SHYAM inside MessageDecode : length:" + length);
             available -= 4;
 
+            LOG.debug("SHYAM inside MessageDecode : available end:" + available);
             if (length <= 0) {
-                ret.add(new TaskMessage(task, null));
+                ret.add(new TaskMessage(task, task_src, null));
                 break;
             }
 
@@ -133,7 +143,7 @@ public class MessageDecoder extends FrameDecoder {
 
             // Successfully decoded a frame.
             // Return a TaskMessage object
-            ret.add(new TaskMessage(task, payload.array()));
+            ret.add(new TaskMessage(task, task_src, payload.array()));
         }
 
         if (ret.size() == 0) {
