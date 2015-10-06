@@ -161,23 +161,30 @@
 
         transfer-fn
           (fn [^KryoTupleSerializer serializer tuple-batch]
+            (log-message "SHYAM worker generic tuple-batch" tuple-batch)
             (let [local (ArrayList.)
                   remoteMap (HashMap.)]
               (fast-list-iter [[task task-src tuple :as pair] tuple-batch]
-                (if (local-tasks task)
-                  (.add local pair)
 
-                  ;;Using java objects directly to avoid performance issues in java code
-                  (do
-                    (when (not (.get remoteMap task))
-                      (.put remoteMap task (ArrayList.)))
-                    (let [remote (.get remoteMap task)]
-                      (if (not-nil? task)
-                        (.add remote (TaskMessage. task task-src (.serialize serializer tuple)))
-                        (log-warn "Can't transfer tuple - task value is nil. tuple type: " (pr-str (type tuple)) " and information: " (pr-str tuple)))
-                     ))))
+                (do
+                  (log-message "SHYAM worker  pair:" pair)
+                  (if (local-tasks task)
+                    (.add local pair)
+
+                    ;;Using java objects directly to avoid performance issues in java code
+                    (do
+                      (when (not (.get remoteMap task))
+                        (.put remoteMap task (ArrayList.)))
+                      (let [remote (.get remoteMap task)]
+                        (if (not-nil? task)
+                          (.add remote (TaskMessage. task task-src (.serialize serializer tuple)))
+                          (log-warn "Can't transfer tuple - task value is nil. tuple type: " (pr-str (type tuple)) " and information: " (pr-str tuple)))
+                        )))
+                  )
+                )
 
               (local-transfer local)
+              (log-message "SHYAM local:"(.toString local)" :remotemap:"(.toString remoteMap))
               (disruptor/publish transfer-queue remoteMap)))]
     (if try-serialize-local
       (do

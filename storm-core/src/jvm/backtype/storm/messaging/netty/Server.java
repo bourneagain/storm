@@ -220,7 +220,7 @@ class Server extends ConnectionWithStatus implements IStatefulObject {
         else {
             try {
                 ArrayList<TaskMessage> request = message_queue[queueId].take();
-                LOG.debug("request to be processed: {}", request);
+                LOG.debug("request to be processed: {}", request.toString());
                 ret = request;
             }
             catch (InterruptedException e) {

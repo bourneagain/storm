@@ -18,6 +18,7 @@
 package backtype.storm.messaging;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public class TaskMessage {
     private int _task;
@@ -63,4 +64,12 @@ public class TaskMessage {
         packet.get(_message);
     }
 
+    @Override
+    public String toString() {
+        return "TaskMessage{" +
+                "_task=" + _task +
+                ", _taskSrc=" + _taskSrc +
+                ", _message=" + Arrays.toString(_message) +
+                '}';
+    }
 }
