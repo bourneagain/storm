@@ -38,6 +38,4 @@ public class MessageEncoder extends OneToOneEncoder {
         
         throw new RuntimeException("Unsupported encoding of object of class "+obj.getClass().getName());
     }
-
-
 }
