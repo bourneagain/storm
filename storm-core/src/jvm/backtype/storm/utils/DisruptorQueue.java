@@ -37,6 +37,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import backtype.storm.metric.api.IStatefulObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -47,6 +49,7 @@ public class DisruptorQueue implements IStatefulObject {
     static final Object FLUSH_CACHE = new Object();
     static final Object INTERRUPT = new Object();
 
+    private static final Logger LOG = LoggerFactory.getLogger(DisruptorQueue.class);
     RingBuffer<MutableObject> _buffer;
     Sequence _consumer;
     SequenceBarrier _barrier;
@@ -126,6 +129,9 @@ public class DisruptorQueue implements IStatefulObject {
         for (long curr = _consumer.get() + 1; curr <= cursor; curr++) {
             try {
                 MutableObject mo = _buffer.get(curr);
+                if (mo == null) {
+                    LOG.debug("SHYAM inside  disruptor queue NULL FOUND");
+                }
                 Object o = mo.o;
                 mo.setObject(null);
                 if (o == FLUSH_CACHE) {

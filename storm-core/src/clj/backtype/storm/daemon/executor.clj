@@ -298,6 +298,7 @@
         (let [^ArrayList alist (.getObject cached-emit)]
           (.add alist o)
           (when batch-end?
+            (log-message "SHYAM start-batch transfer handler alist" alist)
             (worker-transfer-fn serializer alist)
             (.setObject cached-emit (ArrayList.))
             )))
@@ -461,15 +462,29 @@
     (disruptor/clojure-handler
       (fn [tuple-batch sequence-id end-of-batch?]
         (fast-list-iter [[task-id task-src msg] tuple-batch]
-          (let [^TupleImpl tuple (if (instance? Tuple msg) msg (.deserialize deserializer msg))]
-            (when debug? (log-message "Processing received message FOR " task-id " TUPLE: " tuple ":task-src:" task-src))
-            (if task-id
-              (tuple-action-fn task-id task-src tuple)
-              ;; null task ids are broadcast tuples
-              (fast-list-iter [task-id task-src task-ids]
-                (tuple-action-fn task-id task-src tuple)
-                ))
-            ))))))
+          (log-message "SHYAM tuple batch" tuple-batch)
+          (if (nil? msg)
+            (log-message "SHYAM MESSAGE NIL")
+            (do
+              (log-message "SHYAM inside mk-task-receiver msg is " msg)
+              (let [^TupleImpl tuple (if (instance? Tuple msg)
+                                       (do (log-message "SHYAM instance of msg CHECK") msg)
+                                       (do
+                                         (log-message "SHYAM about to call deserialize msg " msg)
+                                         (.deserialize deserializer msg)
+                                         )
+                                       )]
+                (when debug? (log-message "Processing received message FOR " task-id " TUPLE: " tuple ":task-src:" task-src))
+                (if task-id
+                  (tuple-action-fn task-id task-src tuple)
+                  ;; null task ids are broadcast tuples
+                  (fast-list-iter [task-id task-src task-ids]
+                    (tuple-action-fn task-id task-src tuple)
+                    ))
+                )
+              )
+            )
+          )))))
 
 (defn executor-max-spout-pending [storm-conf num-tasks]
   (let [p (storm-conf TOPOLOGY-MAX-SPOUT-PENDING)]
@@ -641,6 +656,7 @@
           (try-cause
             (while (not (.isEmpty overflow-buffer))
               (let [[out-task task-src out-tuple] (.peek overflow-buffer)]
+                (log-message "SHYAM peek overflow buffer INSIDE consumer executor started out-task task-src out-tuple " out-task ":" task-src ":" out-tuple)
                 (transfer-fn out-task task-src out-tuple false nil)
                 (.poll overflow-buffer)))
           (catch InsufficientCapacityException e
@@ -892,6 +908,7 @@
             (try-cause
               (while (and overflow-buffer (not (.isEmpty overflow-buffer)))
                 (let [[out-task task-src out-tuple] (.peek overflow-buffer)]
+                  (log-message "SHYAM inside bolt consume batch out-task task-src out-tuple" out-task":" task-src":" out-tuple)
                   (transfer-fn out-task task-src out-tuple false nil)
                   (.poll overflow-buffer)))
               (catch InsufficientCapacityException e

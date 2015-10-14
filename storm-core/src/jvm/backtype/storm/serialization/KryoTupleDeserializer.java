@@ -28,8 +28,13 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 public class KryoTupleDeserializer implements ITupleDeserializer {
+    private static final Logger LOG = LoggerFactory.getLogger(KryoTupleDeserializer.class);
+
     GeneralTopologyContext _context;
     KryoValuesDeserializer _kryo;
     SerializationFactory.IdDictionary _ids;
@@ -43,6 +48,7 @@ public class KryoTupleDeserializer implements ITupleDeserializer {
     }        
 
     public Tuple deserialize(byte[] ser) {
+
         try {
             _kryoInput.setBuffer(ser);
             int taskId = _kryoInput.readInt(true);

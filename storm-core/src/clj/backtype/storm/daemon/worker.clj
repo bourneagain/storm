@@ -107,11 +107,18 @@
         task->short-executor (:task->short-executor worker)
         task-getter (comp #(get task->short-executor %) fast-first)]
     (fn [tuple-batch]
+      (log-message "mk-transfer-fn SHYAM tuple batch" tuple-batch)
       (let [grouped (fast-group-by task-getter tuple-batch)]
+        (log-message "SHYAM mk-transfer-fn grouped" grouped)
         (fast-map-iter [[short-executor pairs] grouped]
+          (log-message "mk-transfer-function short-executor" short-executor )
           (let [q (short-executor-receive-queue-map short-executor)]
             (if q
-              (disruptor/publish q pairs)
+              (do
+
+                (disruptor/publish q pairs)
+                )
+
               (log-warn "Received invalid messages for unknown tasks. Dropping... ")
               )))))))
 
@@ -183,9 +190,13 @@
                   )
                 )
 
-              (local-transfer local)
+              ;; why do we put null into disruptor queue ?
+              (if (> (count local) 0)
+                (local-transfer local))
               (log-message "SHYAM local:"(.toString local)" :remotemap:"(.toString remoteMap))
-              (disruptor/publish transfer-queue remoteMap)))]
+              (if (> (count remoteMap) 0)
+              (disruptor/publish transfer-queue remoteMap))
+              ))]
     (if try-serialize-local
       (do
         (log-warn "WILL TRY TO SERIALIZE ALL TUPLES (Turn off " TOPOLOGY-TESTING-ALWAYS-TRY-SERIALIZE " for production)")
