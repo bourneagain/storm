@@ -44,8 +44,7 @@ public class MessageDecoder extends FrameDecoder {
         }
 
         List<Object> ret = new ArrayList<Object>();
-
-        // Use while loop, try to decode as more messages as possible in single call
+// Use while loop, try to decode as more messages as possible in single call
         while (available >= 2) {
 
             // Mark the current buffer position before reading task/len field
@@ -68,32 +67,32 @@ public class MessageDecoder extends FrameDecoder {
                     return ctrl_msg;
                 }
             }
-            
+
             //case 2: SaslTokenMessageRequest
             if(code==-500) {
-            	// Make sure that we have received at least an integer (length) 
+            	// Make sure that we have received at least an integer (length)
                 if (buf.readableBytes() < 4) {
                     //need more data
                     buf.resetReaderIndex();
                     return null;
                 }
-                
+
                 // Read the length field.
                 int length = buf.readInt();
                 if (length<=0) {
                     return new SaslMessageToken(null);
                 }
-                
+
                 // Make sure if there's enough bytes in the buffer.
                 if (buf.readableBytes() < length) {
                     // The whole bytes were not received yet - return null.
                     buf.resetReaderIndex();
                     return null;
                 }
-                
-                // There's enough bytes in the buffer. Read it.  
+
+                // There's enough bytes in the buffer. Read it.
                 ChannelBuffer payload = buf.readBytes(length);
-                
+
                 // Successfully decoded a frame.
                 // Return a SaslTokenMessageRequest object
                 return new SaslMessageToken(payload.array());
@@ -101,6 +100,7 @@ public class MessageDecoder extends FrameDecoder {
 
             // case 3: task Message
             short task = code;
+            short task_src = buf.readShort();
 
             // Make sure that we have received at least an integer (length)
             if (available < 4) {
@@ -115,7 +115,7 @@ public class MessageDecoder extends FrameDecoder {
             available -= 4;
 
             if (length <= 0) {
-                ret.add(new TaskMessage(task, null));
+                ret.add(new TaskMessage(task, task_src, null));
                 break;
             }
 
@@ -133,7 +133,7 @@ public class MessageDecoder extends FrameDecoder {
 
             // Successfully decoded a frame.
             // Return a TaskMessage object
-            ret.add(new TaskMessage(task, payload.array()));
+            ret.add(new TaskMessage(task, task_src, payload.array()));
         }
 
         if (ret.size() == 0) {
